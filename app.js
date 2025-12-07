@@ -21,25 +21,16 @@ const historyListEl = document.getElementById("historyList");
 const openHistoryBtn = document.getElementById("openHistoryBtn");
 const closeHistoryModal = document.getElementById("closeHistoryModal");
 const clearHistoryBtn = document.getElementById("clearHistoryBtn");
-const yesNoCard = document.getElementById("yesNoCard");
-
+const questionBlock = document.getElementById("questionBlock");
 const questionInput = document.getElementById("questionInput");
-const useAiToggle = document.getElementById("useAiToggle");
-const calcWeightsButton = document.getElementById("calcWeightsButton");
-const drawNowButton = document.getElementById("drawNowButton");
 const weightsStatusEl = document.getElementById("weightsStatus");
-const weightsOutputEl = document.getElementById("weightsOutput");
-const weightedResultEl = document.getElementById("weightedResult");
+const decisionMetaEl = document.getElementById("decisionMeta");
 
-const API_BASE = window.DR_API_BASE || "";
-
-const DEFAULT_SCORES = [
-  { id: "YES", score: 50 },
-  { id: "NO", score: 50 },
-];
+const API_BASE = window.DR_API_BASE || "https://decisiones-rapidas-worker.nomedesenlacabeza-905.workers.dev"; // || "http://127.0.0.1:8787";
 
 let lastScores = null;
 let lastScoresFromAI = false;
+let lastReason = "";
 
 const modes = {
   binary: [
@@ -137,15 +128,16 @@ const setState = (option, suspense = false) => {
 
 const updateModeUI = () => {
   const isAI = currentMode === "binaryAI";
-  if (isAI) {
-    yesNoCard.removeAttribute("hidden");
-    button.disabled = true;
-    button.textContent = "Usa IA abajo";
-    decisionEl.textContent = "Listo";
+  questionBlock.toggleAttribute("hidden", !isAI);
+  button.disabled = false;
+  button.textContent = "Decidir";
+  if (!isAI) {
+    questionInput.value = "";
+    weightsStatusEl.textContent = "";
+    lastReason = "";
+    updateDecisionMeta(undefined, undefined, "");
   } else {
-    yesNoCard.setAttribute("hidden", "");
-    button.disabled = false;
-    button.textContent = "Decidir";
+    decisionEl.textContent = "Listo";
   }
 };
 
@@ -162,22 +154,19 @@ const formatDateTime = (isoString) => {
 
 const chooseFinalOption = (options) => options[Math.floor(Math.random() * options.length)];
 
-const recordDecision = (option) => {
+const recordDecision = (option, question = null) => {
   const entry = {
     id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
     type: getModeLabel(),
     result: option.label,
     timestamp: new Date().toISOString(),
+    question: question || undefined,
   };
   HistoryManager.addEntry(entry);
   renderHistory();
 };
 
-const formatScoresJson = (scores) => JSON.stringify({ scores }, null, 2);
-
-async function fetchYesNoWeights(question, useAI) {
-  if (!useAI) return DEFAULT_SCORES;
-
+async function fetchYesNoWeights(question) {
   const response = await fetch(`${API_BASE}/api/weights`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -197,19 +186,32 @@ async function fetchYesNoWeights(question, useAI) {
     throw new Error(code);
   }
 
-  if (!data?.scores || !Array.isArray(data.scores)) {
+  if (!data?.scores || !Array.isArray(data.scores) || typeof data.reason !== "string") {
     throw new Error("MODEL_BAD_JSON");
   }
 
-  return data.scores;
+  return { scores: data.scores, reason: data.reason };
 }
 
-const setWeightsState = (scores, statusText, fromAI) => {
+const updateDecisionMeta = (yesScore, noScore, reasonText = "") => {
+  if (yesScore === undefined || noScore === undefined) {
+    decisionMetaEl.textContent = "—";
+    decisionMetaEl.hidden = true;
+    return;
+  }
+  const reasonPart = reasonText ? ` · 🧧 ${reasonText}` : "";
+  decisionMetaEl.innerHTML = `<strong>⚖️ Sí ${yesScore} · No ${noScore}</strong>${reasonPart}`;
+  decisionMetaEl.hidden = false;
+};
+
+const setWeightsState = (scores, statusText, fromAI, reasonText = "") => {
   lastScores = scores;
   lastScoresFromAI = fromAI;
-  weightsOutputEl.textContent = formatScoresJson(scores);
+  lastReason = reasonText;
+  const yes = scores.find((s) => s.id === "YES")?.score ?? "-";
+  const no = scores.find((s) => s.id === "NO")?.score ?? "-";
+  updateDecisionMeta(yes, no, reasonText);
   weightsStatusEl.textContent = statusText;
-  drawNowButton.disabled = false;
 };
 
 const describeWeightsError = (code) => {
@@ -230,74 +232,65 @@ const pickWithWeights = (scores) => {
   return scores[scores.length - 1].id;
 };
 
-const handleCalculateWeights = async () => {
+const decideWithAI = async () => {
   const question = questionInput.value.trim();
-  const useAI = useAiToggle.checked;
 
   if (!question) {
+    weightsStatusEl.hidden = false;
     weightsStatusEl.textContent = "Escribe una pregunta antes de continuar.";
     questionInput.focus();
     return;
   }
 
-  calcWeightsButton.disabled = true;
-  drawNowButton.disabled = true;
-  weightedResultEl.textContent = "Resultado: —";
-  weightsStatusEl.textContent = useAI ? "Consultando IA..." : "Usando 50/50 sin IA.";
+  button.disabled = true;
+  button.textContent = "Consultando IA...";
+  decisionEl.textContent = "Pensando...";
+  decisionEl.classList.add("suspense");
+  weightsStatusEl.hidden = false;
+  weightsStatusEl.textContent = "Consultando IA...";
+  updateDecisionMeta(undefined, undefined, "");
+
+  let spinIndex = 0;
+  const spinOptions = modes.binary;
+  const spinInterval = setInterval(() => {
+    const option = spinOptions[spinIndex % spinOptions.length];
+    setState(option, true);
+    spinIndex += 1;
+  }, 140);
 
   try {
-    const scores = await fetchYesNoWeights(question, useAI);
-    const statusText = useAI ? "Pesos devueltos por IA." : "Pesos 50/50 sin IA.";
-    setWeightsState(scores, statusText, useAI);
+    const { scores, reason } = await fetchYesNoWeights(question);
+    setWeightsState(scores, "Pesos devueltos por IA.", true, reason);
+
+    const choiceId = pickWithWeights(scores);
+    if (!choiceId) {
+      weightsStatusEl.textContent = "No hay pesos válidos.";
+      return;
+    }
+
+    const finalOption = choiceId === "YES" ? { label: "sí", bodyClass: "yes" } : { label: "no", bodyClass: "no" };
+    setState(finalOption, false);
+    recordDecision(finalOption, question);
+    weightsStatusEl.hidden = true;
   } catch (error) {
     lastScores = null;
     lastScoresFromAI = false;
-    weightsOutputEl.textContent = "—";
+    updateDecisionMeta(undefined, undefined, "");
     const code = error?.message || "MODEL_ERROR";
+    weightsStatusEl.hidden = false;
     weightsStatusEl.textContent = describeWeightsError(code);
+    decisionEl.textContent = "Error";
   } finally {
-    calcWeightsButton.disabled = false;
+    clearInterval(spinInterval);
+    button.disabled = false;
+    button.textContent = "Decidir";
+    decisionEl.classList.remove("suspense");
   }
-};
-
-const handleDrawNow = () => {
-  const wantsAI = useAiToggle.checked;
-  const question = questionInput.value.trim();
-
-  if (!question) {
-    weightsStatusEl.textContent = "Escribe una pregunta antes de sortear.";
-    questionInput.focus();
-    return;
-  }
-
-  if (wantsAI && !lastScoresFromAI) {
-    weightsStatusEl.textContent = "Primero calcula los pesos con IA.";
-    return;
-  }
-
-  const scoresToUse = wantsAI ? lastScores : DEFAULT_SCORES;
-
-  if (!scoresToUse) {
-    weightsStatusEl.textContent = "Calcula pesos antes de sortear.";
-    return;
-  }
-
-  if (!wantsAI && (!lastScores || lastScoresFromAI)) {
-    setWeightsState(DEFAULT_SCORES, "Pesos 50/50 sin IA.", false);
-  }
-
-  const choiceId = pickWithWeights(scoresToUse);
-  if (!choiceId) {
-    weightsStatusEl.textContent = "No hay pesos válidos.";
-    return;
-  }
-
-  const label = choiceId === "YES" ? "Sí" : "No";
-  weightedResultEl.textContent = `Resultado: ${label}`;
 };
 
 const startSpin = () => {
   if (currentMode === "binaryAI") {
+    decideWithAI();
     return;
   }
   if (spinning) return;
@@ -503,6 +496,7 @@ const renderHistory = () => {
               <span class="history-tag">${item.type}</span>
               <span>${item.result}</span>
             </div>
+            ${item.question ? `<div class="history-meta">${item.question}</div>` : ""}
             <div class="history-meta">${formatDateTime(item.timestamp)}</div>
           </div>
           <div class="history-actions">
@@ -545,6 +539,11 @@ modeInputs.forEach((input) => {
       setMode(event.target.value);
       modeMenu.setAttribute("hidden", "");
       menuButton.setAttribute("aria-expanded", "false");
+      if (currentMode === "binaryAI") {
+        decisionEl.textContent = "Listo";
+        weightsStatusEl.textContent = "Escribe una pregunta y pulsa “Decidir” en este modo.";
+        updateDecisionMeta(undefined, undefined, "");
+      }
     }
   });
 });
@@ -558,9 +557,6 @@ cancelBtn.addEventListener("click", closeListModal);
 deleteBtn.addEventListener("click", deleteList);
 
 listForm.addEventListener("submit", saveList);
-
-calcWeightsButton.addEventListener("click", handleCalculateWeights);
-drawNowButton.addEventListener("click", handleDrawNow);
 
 listModal.addEventListener("click", (e) => {
   if (e.target === listModal) {
@@ -600,8 +596,6 @@ updateModeChip();
 renderLists();
 renderHistory();
 updateModeUI();
-
-drawNowButton.disabled = true;
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

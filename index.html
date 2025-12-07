@@ -42,32 +42,13 @@
       <section class="hero">
         <div class="mode-chip" id="modeChip">Modo: Sí / No</div>
         <div class="status" id="decision">Listo</div>
-        <button class="cta" id="decideButton" type="button">Decidir</button>
-      </section>
-
-      <section class="card" id="yesNoCard" aria-labelledby="yesNoTitle" hidden>
-        <div class="card-header">
-          <div>
-            <p class="eyebrow">Ponderar con IA (opcional)</p>
-            <h1 id="yesNoTitle">Decisión Sí / No</h1>
-          </div>
-          <span class="badge">Beta</span>
-        </div>
-        <div class="form-group">
+        <p class="decision-meta" id="decisionMeta" hidden>—</p>
+        <div class="question-block" id="questionBlock" hidden>
           <label for="questionInput">Pregunta</label>
-          <textarea id="questionInput" placeholder="¿Debería salir a correr hoy?" maxlength="1000" rows="3"></textarea>
+          <textarea id="questionInput" placeholder="¿Qué decisión quieres ponderar?" maxlength="1000" rows="3"></textarea>
         </div>
-        <label class="checkbox-row">
-          <input type="checkbox" id="useAiToggle" />
-          <span>Usar IA para ponderar (si no, 50/50)</span>
-        </label>
-        <div class="button-row">
-          <button class="btn-primary" type="button" id="calcWeightsButton">Calcular pesos</button>
-          <button class="btn-secondary" type="button" id="drawNowButton">Elegir ahora</button>
-        </div>
-        <p class="hint" id="weightsStatus">Introduce una pregunta y pulsa “Calcular pesos”.</p>
-        <pre id="weightsOutput" class="code-block">Aún no has calculado pesos.</pre>
-        <p class="result-line" id="weightedResult">Resultado: —</p>
+        <button class="cta" id="decideButton" type="button">Decidir</button>
+        <p class="assistive" id="weightsStatus" hidden></p>
       </section>
     </main>
 

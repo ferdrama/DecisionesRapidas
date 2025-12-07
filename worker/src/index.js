@@ -68,11 +68,10 @@ const validatePayload = (payload) => {
 const buildMessages = (question, choices) => {
   const choiceLines = choices.map((c) => `- ${c.id}: ${c.label}`).join("\n");
   const system =
-    "Eres un asistente que responde SOLO con JSON plano. No uses Markdown ni texto adicional. " +
-    'Devuelve exactamente {"scores":[{"id":"YES","score":<entero 0-100>},{"id":"NO","score":<entero 0-100>}]}.' +
-    " Usa los ids tal cual. Los scores deben ser enteros entre 0 y 100. No añadas comentarios.";
+    "Responde SOLO con JSON plano sin Markdown. Formato exacto: {\"scores\":[{\"id\":\"YES\",\"score\":<entero 0-100>},{\"id\":\"NO\",\"score\":<entero 0-100>}],\"reason\":\"<frase corta estilo galleta de la suerte>\"}. " +
+    "Usa los ids tal cual. Scores enteros 0-100. La razón debe ser una sola frase corta, positiva y concisa, sin saltos de línea. El formato de esa frase es similar a una galleta de la suerte.";
 
-  const user = `Pregunta: ${question}\nOpciones:\n${choiceLines}\nDevuelve el JSON con scores.`;
+  const user = `Pregunta: ${question}\nOpciones:\n${choiceLines}\nDevuelve el JSON con scores y reason.`;
 
   return [
     { role: "system", content: system },
@@ -81,7 +80,13 @@ const buildMessages = (question, choices) => {
 };
 
 const validateScoresShape = (data, expectedIds) => {
-  if (!data || typeof data !== "object" || !Array.isArray(data.scores) || data.scores.length !== expectedIds.length) {
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !Array.isArray(data.scores) ||
+    data.scores.length !== expectedIds.length ||
+    typeof data.reason !== "string"
+  ) {
     return { ok: false, error: "MODEL_BAD_JSON" };
   }
 
@@ -101,7 +106,10 @@ const validateScoresShape = (data, expectedIds) => {
     if (!expectedSet.has(id)) return { ok: false, error: "MODEL_BAD_JSON" };
   }
 
-  return { ok: true };
+  const reason = data.reason.trim();
+  if (reason.length < 1 || reason.length > 300) return { ok: false, error: "MODEL_BAD_JSON" };
+
+  return { ok: true, reason };
 };
 
 const modelBadJson = () => jsonResponse({ error: "MODEL_BAD_JSON" }, 502);
@@ -111,9 +119,12 @@ const callOpenRouter = async (body, env) => {
   const timeoutId = setTimeout(() => controller.abort(), 10_000);
 
   try {
+    const apiKey = env.OPENROUTER_API_KEY;
+    console.log("Using API key:", apiKey ? `${apiKey.substring(0, 10)}...` : "MISSING");
+    
     const headers = {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     };
 
     if (env.OPENROUTER_HTTP_REFERER) headers["HTTP-Referer"] = env.OPENROUTER_HTTP_REFERER;
@@ -187,15 +198,31 @@ export default {
       return jsonResponse({ error: "MODEL_ERROR" }, 502);
     }
 
+    if (modelResult.payload.error) {
+      console.error("OpenRouter error:", modelResult.payload.error);
+      return jsonResponse({ error: "MODEL_API_ERROR", details: modelResult.payload.error.message }, 502);
+    }
+
     const rawContent = modelResult.payload?.choices?.[0]?.message?.content;
     if (typeof rawContent !== "string") {
+      console.error("No content from model:", modelResult.payload);
       return modelBadJson();
+    }
+
+    console.log("Raw model response:", rawContent);
+
+    // Strip markdown code blocks if present
+    let cleanedContent = rawContent.trim();
+    const codeBlockMatch = cleanedContent.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/m);
+    if (codeBlockMatch) {
+      cleanedContent = codeBlockMatch[1].trim();
     }
 
     let parsed;
     try {
-      parsed = JSON.parse(rawContent.trim());
+      parsed = JSON.parse(cleanedContent);
     } catch (err) {
+      console.error("JSON parse failed:", err.message, "Content:", cleanedContent);
       return modelBadJson();
     }
 
@@ -204,6 +231,6 @@ export default {
       return modelBadJson();
     }
 
-    return jsonResponse({ scores: parsed.scores, meta: { provider: "openrouter", model } });
+    return jsonResponse({ scores: parsed.scores, reason: validationResult.reason, meta: { provider: "openrouter", model } });
   },
 };

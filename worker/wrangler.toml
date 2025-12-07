@@ -1,3 +1,4 @@
 name = "decisiones-rapidas-worker"
 main = "src/index.js"
 compatibility_date = "2024-09-01"
+ALLOWED_ORIGINS = "https://ferdrama.github.io"
