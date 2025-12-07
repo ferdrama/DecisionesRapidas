@@ -68,8 +68,8 @@ const validatePayload = (payload) => {
 const buildMessages = (question, choices) => {
   const choiceLines = choices.map((c) => `- ${c.id}: ${c.label}`).join("\n");
   const system =
-    "Responde SOLO con JSON plano sin Markdown. Formato exacto: {\"scores\":[{\"id\":\"<id>\",\"score\":<entero 0-100>}...],\"reason\":\"<frase corta estilo galleta de la suerte>\"}. " +
-    "Incluye una entrada en scores para CADA opción listada, usando exactamente su id. Scores enteros 0-100. La razón debe ser una sola frase corta, positiva y concisa, sin saltos de línea. El formato de esa frase es similar a una galleta de la suerte.";
+    "Responde SOLO con JSON plano sin Markdown. Formato exacto: {\"scores\":[{\"id\":\"<id>\",\"score\":<entero 0-100>}...],\"reason\":\"<frase corta estilo galleta de la suerte con un pareado>\"}. " +
+    "Incluye una entrada en scores para CADA opción listada, usando exactamente su id. Scores enteros 0-100. La razón debe ser una sola frase corta, positiva y concisa, sin saltos de línea. El formato de esa frase es similar a una galleta de la suerte con un pareado.";
 
   const user = `Pregunta: ${question}\nOpciones:\n${choiceLines}\nDevuelve el JSON con scores para TODAS las opciones y reason.`;
 
