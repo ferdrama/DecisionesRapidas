@@ -24,13 +24,45 @@
         <label class="menu-option">
           <input type="radio" name="mode" value="dice" /> Dado de seis caras
         </label>
+        <hr style="margin: 0.4rem 0; border: none; border-top: 1px solid rgba(255, 255, 255, 0.1);" />
+        <p class="menu-title" style="margin-top: 0.8rem;">Mis Listas</p>
+        <div id="listsList" style="max-height: 200px; overflow-y: auto;">
+          <p style="font-size: 0.85rem; color: var(--muted); margin: 0.4rem 0;">Sin listas personalizadas</p>
+        </div>
+        <button id="createListBtn" class="menu-button-small">+ Nueva Lista</button>
       </div>
     </header>
 
     <main class="app" aria-live="polite">
+      <div class="mode-chip" id="modeChip">Modo: Sí / No</div>
       <div class="status" id="decision">Listo</div>
       <button class="cta" id="decideButton" type="button">Decidir</button>
     </main>
+
+    <!-- Modal de Lista -->
+    <div id="listModal" class="modal" hidden>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modalTitle">Nueva Lista</h2>
+          <button class="modal-close" id="closeModal">✕</button>
+        </div>
+        <form id="listForm">
+          <div class="form-group">
+            <label for="listName">Nombre de la lista</label>
+            <input type="text" id="listName" placeholder="Ej: Restaurantes, Películas..." required />
+          </div>
+          <div class="form-group">
+            <label for="listItems">Opciones (una por línea)</label>
+            <textarea id="listItems" placeholder="Opción 1&#10;Opción 2&#10;Opción 3" required></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary">Guardar Lista</button>
+            <button type="button" class="btn-secondary" id="cancelBtn">Cancelar</button>
+            <button type="button" class="btn-danger" id="deleteBtn" hidden>Eliminar Lista</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <script src="app.js"></script>
     <script>
