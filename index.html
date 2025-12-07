@@ -97,6 +97,8 @@
       </div>
     </div>
 
+    <div id="updateToast" class="toast" hidden>La app se ha actualizado. Recargando...</div>
+
     <script>
       (function () {
         const PROD_BASE = "https://decisiones-rapidas-worker.nomedesenlacabeza-905.workers.dev";
@@ -108,8 +110,38 @@
     </script>
     <script src="app.js"></script>
     <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
+      if ("serviceWorker" in navigator) {
+        let refreshing = false;
+        let updateNotified = false;
+        const toastEl = document.getElementById("updateToast");
+
+        const showUpdateToast = () => {
+          if (!toastEl) return;
+          toastEl.hidden = false;
+          requestAnimationFrame(() => toastEl.classList.add("show"));
+        };
+
+        const scheduleReload = (delayMs = 900) => {
+          if (refreshing) return;
+          refreshing = true;
+          setTimeout(() => window.location.reload(), delayMs);
+        };
+
+        navigator.serviceWorker.addEventListener("message", (event) => {
+          if (event?.data?.type === "SW_ACTIVATED") {
+            updateNotified = true;
+            showUpdateToast();
+            scheduleReload();
+          }
+        });
+
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (refreshing) return;
+          if (!updateNotified) showUpdateToast();
+          scheduleReload(400);
+        });
+
+        navigator.serviceWorker.register("sw.js").catch((err) => console.log("SW registration failed:", err));
       }
     </script>
   </body>
