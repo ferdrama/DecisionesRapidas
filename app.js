@@ -27,6 +27,11 @@ const weightsStatusEl = document.getElementById("weightsStatus");
 const decisionMetaEl = document.getElementById("decisionMeta");
 const listAiRow = document.getElementById("listAiRow");
 const listAiToggle = document.getElementById("listAiToggle");
+const weightsChartEl = document.getElementById("weightsChart");
+const weightsEmptyEl = document.getElementById("weightsEmpty");
+const weightsBadgeEl = document.getElementById("weightsBadge");
+const weightsHelperEl = document.getElementById("weightsHelper");
+const weightsCardEl = document.getElementById("weightsCard");
 
 const API_BASE = (window.DR_API_BASE || "https://decisiones-rapidas-worker.nomedesenlacabeza-905.workers.dev").replace(/\/+$/, "");
 
@@ -229,13 +234,104 @@ const renderDecisionMeta = (scores, reasonText = "") => {
   decisionMetaEl.hidden = false;
 };
 
-const resetWeightsState = () => {
+const updateWeightsBadge = (state = "idle") => {
+  if (!weightsBadgeEl) return;
+  weightsBadgeEl.classList.remove("badge-idle", "badge-ai", "badge-manual", "badge-error");
+  if (state === "ai") {
+    weightsBadgeEl.textContent = "IA";
+    weightsBadgeEl.classList.add("badge-ai");
+    return;
+  }
+  if (state === "manual") {
+    weightsBadgeEl.textContent = "Manual";
+    weightsBadgeEl.classList.add("badge-manual");
+    return;
+  }
+  if (state === "error") {
+    weightsBadgeEl.textContent = "Error";
+    weightsBadgeEl.classList.add("badge-error");
+    return;
+  }
+  weightsBadgeEl.textContent = "Esperando";
+  weightsBadgeEl.classList.add("badge-idle");
+};
+
+const formatScore = (score) => {
+  if (!Number.isFinite(score)) return "–";
+  if (Math.abs(score) >= 1000) return score.toFixed(0);
+  const rounded = Math.abs(score % 1) < 0.01 ? score.toFixed(0) : score.toFixed(2);
+  return rounded.replace(/\.00$/, "");
+};
+
+const clearWeightsChart = (emptyMessage = "Sin datos de pesos todavía.") => {
+  if (weightsChartEl) {
+    weightsChartEl.innerHTML = "";
+    weightsChartEl.setAttribute("hidden", "");
+  }
+  if (weightsEmptyEl) {
+    weightsEmptyEl.hidden = !emptyMessage;
+    if (emptyMessage) weightsEmptyEl.textContent = emptyMessage;
+  }
+  if (weightsCardEl) {
+    weightsCardEl.setAttribute("hidden", "");
+  }
+  updateWeightsBadge("idle");
+  if (weightsHelperEl) {
+    weightsHelperEl.textContent = emptyMessage || "Cuando uses el modo IA verás aquí los pesos devueltos.";
+  }
+};
+
+const renderWeightsChart = (scores) => {
+  if (!weightsChartEl || !weightsEmptyEl) return;
+  if (!scores || !scores.length) {
+    clearWeightsChart();
+    return;
+  }
+
+  const gradients = [
+    "linear-gradient(90deg, #5eead4, #8b5cf6, #f472b6)",
+    "linear-gradient(90deg, #38bdf8, #6366f1, #a855f7)",
+    "linear-gradient(90deg, #fbbf24, #fb7185, #a855f7)",
+    "linear-gradient(90deg, #34d399, #22d3ee, #6366f1)",
+  ];
+
+  const maxAbs = Math.max(...scores.map((entry) => Math.abs(Number(entry.score) || 0)), 0.0001);
+
+  weightsChartEl.innerHTML = scores
+    .map((entry, idx) => {
+      const label = entry.label || entry.id || `Opción ${idx + 1}`;
+      const scoreVal = Number(entry.score ?? 0);
+      const width = Math.max(6, Math.min(100, (Math.abs(scoreVal) / maxAbs) * 100));
+      const gradient = gradients[idx % gradients.length];
+      const isNegative = scoreVal < 0;
+
+      return `
+        <div class="weight-row">
+          <div class="weight-label" title="${label}">${label}</div>
+          <div class="weight-bar">
+            <div class="weight-fill${isNegative ? " negative" : ""}" style="width: ${width}%; background: ${gradient};"></div>
+            <span class="weight-value">${formatScore(scoreVal)}</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  weightsChartEl.removeAttribute("hidden");
+  weightsEmptyEl.hidden = true;
+  if (weightsCardEl) {
+    weightsCardEl.removeAttribute("hidden");
+  }
+};
+
+const resetWeightsState = (emptyMessage) => {
   lastScores = null;
   lastScoresFromAI = false;
   lastReason = "";
   weightsStatusEl.textContent = "";
   weightsStatusEl.hidden = true;
   renderDecisionMeta(null, "");
+  clearWeightsChart(emptyMessage);
 };
 
 const setWeightsState = (scores, statusText, fromAI, reasonText = "") => {
@@ -245,6 +341,17 @@ const setWeightsState = (scores, statusText, fromAI, reasonText = "") => {
   weightsStatusEl.hidden = false;
   renderDecisionMeta(scores, reasonText);
   weightsStatusEl.textContent = statusText;
+  renderWeightsChart(scores);
+  updateWeightsBadge(fromAI ? "ai" : "manual");
+  if (weightsHelperEl) {
+    if (reasonText) {
+      weightsHelperEl.textContent = `🍪 ${reasonText}`;
+    } else if (statusText) {
+      weightsHelperEl.textContent = `ℹ️ ${statusText}`;
+    } else {
+      weightsHelperEl.textContent = "Distribución de pesos";
+    }
+  }
 };
 
 const describeWeightsError = (code) => {
@@ -282,6 +389,11 @@ const decideWithAI = async () => {
   weightsStatusEl.hidden = false;
   weightsStatusEl.textContent = "Consultando IA...";
   renderDecisionMeta(null, "");
+  clearWeightsChart("Consultando IA...");
+  updateWeightsBadge("ai");
+  if (weightsHelperEl) {
+    weightsHelperEl.textContent = "Esperando respuesta de la IA";
+  }
 
   let spinIndex = 0;
   const spinOptions = modes.binary;
@@ -316,7 +428,8 @@ const decideWithAI = async () => {
     recordDecision(finalOption, question);
     weightsStatusEl.hidden = true;
   } catch (error) {
-    resetWeightsState();
+    resetWeightsState("No se pudieron obtener pesos.");
+    updateWeightsBadge("error");
     const code = error?.message || "MODEL_ERROR";
     weightsStatusEl.hidden = false;
     weightsStatusEl.textContent = describeWeightsError(code);
@@ -344,6 +457,11 @@ const decideListWithAI = async () => {
   weightsStatusEl.hidden = false;
   weightsStatusEl.textContent = `Consultando IA para "${list.name}"...`;
   renderDecisionMeta(null, "");
+  clearWeightsChart(`Consultando IA para "${list.name}"...`);
+  updateWeightsBadge("ai");
+  if (weightsHelperEl) {
+    weightsHelperEl.textContent = `Esperando pesos para "${list.name}"`;
+  }
 
   const spinOptions = modes[currentMode] || buildListOptions(list);
   let spinIndex = 0;
@@ -665,6 +783,11 @@ listAiToggle.addEventListener("change", () => {
     weightsStatusEl.hidden = false;
     weightsStatusEl.textContent = "IA activada: usaremos el nombre y las opciones de la lista.";
     renderDecisionMeta(null, "");
+    clearWeightsChart("IA activada: espera resultados");
+    updateWeightsBadge("ai");
+    if (weightsHelperEl) {
+      weightsHelperEl.textContent = "Pulsa \"Decidir\" para ver los pesos de la IA";
+    }
   } else {
     resetWeightsState();
   }
