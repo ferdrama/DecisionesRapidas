@@ -1,4 +1,10 @@
 name = "decisiones-rapidas-worker"
 main = "src/index.js"
 compatibility_date = "2024-09-01"
-ALLOWED_ORIGINS = "https://ferdrama.github.io"
+
+[vars]
+ALLOWED_ORIGINS = "https://ferdrama.github.io,http://localhost:8083"
+OPENROUTER_MODEL = "openai/gpt-4o-mini"
+# Optional headers for OpenRouter; uncomment to set
+# OPENROUTER_HTTP_REFERER = "https://ferdrama.github.io"
+# OPENROUTER_X_TITLE = "DecisionesRapidas"

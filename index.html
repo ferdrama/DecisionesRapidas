@@ -93,6 +93,15 @@
       </div>
     </div>
 
+    <script>
+      (function () {
+        const PROD_BASE = "https://decisiones-rapidas-worker.nomedesenlacabeza-905.workers.dev";
+        const DEV_BASE = "http://127.0.0.1:8787";
+        const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname);
+        // Allow manual override by defining window.DR_API_BASE earlier; otherwise pick prod or dev.
+        window.DR_API_BASE = window.DR_API_BASE || (isLocal ? DEV_BASE : PROD_BASE);
+      })();
+    </script>
     <script src="app.js"></script>
     <script>
       if ('serviceWorker' in navigator) {

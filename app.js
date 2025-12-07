@@ -26,7 +26,7 @@ const questionInput = document.getElementById("questionInput");
 const weightsStatusEl = document.getElementById("weightsStatus");
 const decisionMetaEl = document.getElementById("decisionMeta");
 
-const API_BASE = window.DR_API_BASE || "https://decisiones-rapidas-worker.nomedesenlacabeza-905.workers.dev"; // || "http://127.0.0.1:8787";
+const API_BASE = (window.DR_API_BASE || "https://decisiones-rapidas-worker.nomedesenlacabeza-905.workers.dev").replace(/\/+$/, "");
 
 let lastScores = null;
 let lastScoresFromAI = false;
