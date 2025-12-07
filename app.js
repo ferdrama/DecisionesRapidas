@@ -21,9 +21,32 @@ const historyListEl = document.getElementById("historyList");
 const openHistoryBtn = document.getElementById("openHistoryBtn");
 const closeHistoryModal = document.getElementById("closeHistoryModal");
 const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+const yesNoCard = document.getElementById("yesNoCard");
+
+const questionInput = document.getElementById("questionInput");
+const useAiToggle = document.getElementById("useAiToggle");
+const calcWeightsButton = document.getElementById("calcWeightsButton");
+const drawNowButton = document.getElementById("drawNowButton");
+const weightsStatusEl = document.getElementById("weightsStatus");
+const weightsOutputEl = document.getElementById("weightsOutput");
+const weightedResultEl = document.getElementById("weightedResult");
+
+const API_BASE = window.DR_API_BASE || "";
+
+const DEFAULT_SCORES = [
+  { id: "YES", score: 50 },
+  { id: "NO", score: 50 },
+];
+
+let lastScores = null;
+let lastScoresFromAI = false;
 
 const modes = {
   binary: [
+    { label: "sí", bodyClass: "yes" },
+    { label: "no", bodyClass: "no" },
+  ],
+  binaryAI: [
     { label: "sí", bodyClass: "yes" },
     { label: "no", bodyClass: "no" },
   ],
@@ -90,6 +113,7 @@ const getListById = (id) => StorageManager.getLists().find((l) => l.id === id);
 
 const getModeLabel = () => {
   if (currentMode === "dice") return "Dado de seis caras";
+  if (currentMode === "binaryAI") return "Sí / No con IA";
   if (currentMode === "binary") return "Sí / No";
   const list = getListById(currentMode);
   return list ? list.name : "Lista personalizada";
@@ -108,6 +132,20 @@ const setState = (option, suspense = false) => {
   document.body.classList.remove("yes", "no", "dice", "custom");
   if (option.bodyClass) {
     document.body.classList.add(option.bodyClass);
+  }
+};
+
+const updateModeUI = () => {
+  const isAI = currentMode === "binaryAI";
+  if (isAI) {
+    yesNoCard.removeAttribute("hidden");
+    button.disabled = true;
+    button.textContent = "Usa IA abajo";
+    decisionEl.textContent = "Listo";
+  } else {
+    yesNoCard.setAttribute("hidden", "");
+    button.disabled = false;
+    button.textContent = "Decidir";
   }
 };
 
@@ -135,7 +173,133 @@ const recordDecision = (option) => {
   renderHistory();
 };
 
+const formatScoresJson = (scores) => JSON.stringify({ scores }, null, 2);
+
+async function fetchYesNoWeights(question, useAI) {
+  if (!useAI) return DEFAULT_SCORES;
+
+  const response = await fetch(`${API_BASE}/api/weights`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      question,
+      choices: [
+        { id: "YES", label: "Sí" },
+        { id: "NO", label: "No" },
+      ],
+    }),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const code = data?.error || `HTTP_${response.status}`;
+    throw new Error(code);
+  }
+
+  if (!data?.scores || !Array.isArray(data.scores)) {
+    throw new Error("MODEL_BAD_JSON");
+  }
+
+  return data.scores;
+}
+
+const setWeightsState = (scores, statusText, fromAI) => {
+  lastScores = scores;
+  lastScoresFromAI = fromAI;
+  weightsOutputEl.textContent = formatScoresJson(scores);
+  weightsStatusEl.textContent = statusText;
+  drawNowButton.disabled = false;
+};
+
+const describeWeightsError = (code) => {
+  if (code === "MODEL_BAD_JSON") return "La IA no devolvió JSON válido (MODEL_BAD_JSON).";
+  if (code === "MODEL_TIMEOUT") return "La petición a la IA tardó demasiado (MODEL_TIMEOUT).";
+  return `No se pudieron obtener pesos (${code}).`;
+};
+
+const pickWithWeights = (scores) => {
+  const total = scores.reduce((sum, entry) => sum + Math.max(0, entry.score), 0);
+  if (total <= 0) return null;
+  const roll = Math.random() * total;
+  let acc = 0;
+  for (const entry of scores) {
+    acc += Math.max(0, entry.score);
+    if (roll <= acc) return entry.id;
+  }
+  return scores[scores.length - 1].id;
+};
+
+const handleCalculateWeights = async () => {
+  const question = questionInput.value.trim();
+  const useAI = useAiToggle.checked;
+
+  if (!question) {
+    weightsStatusEl.textContent = "Escribe una pregunta antes de continuar.";
+    questionInput.focus();
+    return;
+  }
+
+  calcWeightsButton.disabled = true;
+  drawNowButton.disabled = true;
+  weightedResultEl.textContent = "Resultado: —";
+  weightsStatusEl.textContent = useAI ? "Consultando IA..." : "Usando 50/50 sin IA.";
+
+  try {
+    const scores = await fetchYesNoWeights(question, useAI);
+    const statusText = useAI ? "Pesos devueltos por IA." : "Pesos 50/50 sin IA.";
+    setWeightsState(scores, statusText, useAI);
+  } catch (error) {
+    lastScores = null;
+    lastScoresFromAI = false;
+    weightsOutputEl.textContent = "—";
+    const code = error?.message || "MODEL_ERROR";
+    weightsStatusEl.textContent = describeWeightsError(code);
+  } finally {
+    calcWeightsButton.disabled = false;
+  }
+};
+
+const handleDrawNow = () => {
+  const wantsAI = useAiToggle.checked;
+  const question = questionInput.value.trim();
+
+  if (!question) {
+    weightsStatusEl.textContent = "Escribe una pregunta antes de sortear.";
+    questionInput.focus();
+    return;
+  }
+
+  if (wantsAI && !lastScoresFromAI) {
+    weightsStatusEl.textContent = "Primero calcula los pesos con IA.";
+    return;
+  }
+
+  const scoresToUse = wantsAI ? lastScores : DEFAULT_SCORES;
+
+  if (!scoresToUse) {
+    weightsStatusEl.textContent = "Calcula pesos antes de sortear.";
+    return;
+  }
+
+  if (!wantsAI && (!lastScores || lastScoresFromAI)) {
+    setWeightsState(DEFAULT_SCORES, "Pesos 50/50 sin IA.", false);
+  }
+
+  const choiceId = pickWithWeights(scoresToUse);
+  if (!choiceId) {
+    weightsStatusEl.textContent = "No hay pesos válidos.";
+    return;
+  }
+
+  const label = choiceId === "YES" ? "Sí" : "No";
+  weightedResultEl.textContent = `Resultado: ${label}`;
+};
+
 const startSpin = () => {
+  if (currentMode === "binaryAI") {
+    return;
+  }
   if (spinning) return;
   spinning = true;
   button.disabled = true;
@@ -146,6 +310,7 @@ const startSpin = () => {
     currentMode = "binary";
     markRadios("binary");
     updateModeChip();
+    updateModeUI();
   }
   let index = 0;
   intervalId = setInterval(() => {
@@ -173,6 +338,7 @@ const setMode = (mode) => {
   setState({ label: "Listo", bodyClass: "" });
   updateModeChip();
   renderLists();
+  updateModeUI();
 };
 
 const toggleMenu = () => {
@@ -271,6 +437,7 @@ const selectCustomList = (list) => {
   modeMenu.setAttribute("hidden", "");
   menuButton.setAttribute("aria-expanded", "false");
   renderLists();
+  updateModeUI();
 };
 
 const renderLists = () => {
@@ -392,6 +559,9 @@ deleteBtn.addEventListener("click", deleteList);
 
 listForm.addEventListener("submit", saveList);
 
+calcWeightsButton.addEventListener("click", handleCalculateWeights);
+drawNowButton.addEventListener("click", handleDrawNow);
+
 listModal.addEventListener("click", (e) => {
   if (e.target === listModal) {
     closeListModal();
@@ -429,6 +599,9 @@ setState({ label: "Listo", bodyClass: "" });
 updateModeChip();
 renderLists();
 renderHistory();
+updateModeUI();
+
+drawNowButton.disabled = true;
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
