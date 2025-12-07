@@ -9,25 +9,25 @@
     <title>Decisiones Rápidas</title>
   </head>
   <body>
-    <main class="app">
-      <header class="hero">
-        <p class="eyebrow">PWA sin backend</p>
-        <h1>Decisiones rápidas</h1>
-        <p class="lede">
-          Pulsa el botón para que la app te ayude a elegir entre <span class="pill pill-yes">sí</span> y
-          <span class="pill pill-no">no</span> con un poco de suspense.
-        </p>
-      </header>
+    <header class="topbar">
+      <button class="menu-button" id="menuButton" aria-label="Elegir modo" aria-expanded="false" aria-controls="modeMenu">
+        ☰
+      </button>
+      <div class="menu" id="modeMenu" hidden>
+        <p class="menu-title">Modo</p>
+        <label class="menu-option">
+          <input type="radio" name="mode" value="binary" checked /> Sí / No
+        </label>
+        <label class="menu-option">
+          <input type="radio" name="mode" value="dice" /> Dado de seis caras
+        </label>
+      </div>
+    </header>
 
-      <section class="decision-card" aria-live="polite">
-        <div class="status" id="decision">Listo</div>
-        <button class="cta" id="decideButton" type="button">Decidir</button>
-      </section>
+    <main class="app" aria-live="polite">
+      <div class="status" id="decision">Listo</div>
+      <button class="cta" id="decideButton" type="button">Decidir</button>
     </main>
-
-    <footer class="meta">
-      Funciona sin conexión y puede instalarse en tu dispositivo.
-    </footer>
 
     <script src="app.js"></script>
   </body>
