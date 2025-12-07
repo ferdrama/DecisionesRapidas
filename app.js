@@ -25,12 +25,15 @@ const questionBlock = document.getElementById("questionBlock");
 const questionInput = document.getElementById("questionInput");
 const weightsStatusEl = document.getElementById("weightsStatus");
 const decisionMetaEl = document.getElementById("decisionMeta");
+const listAiRow = document.getElementById("listAiRow");
+const listAiToggle = document.getElementById("listAiToggle");
 
 const API_BASE = (window.DR_API_BASE || "https://decisiones-rapidas-worker.nomedesenlacabeza-905.workers.dev").replace(/\/+$/, "");
 
 let lastScores = null;
 let lastScoresFromAI = false;
 let lastReason = "";
+const isCustomListMode = () => !["binary", "binaryAI", "dice"].includes(currentMode);
 
 const modes = {
   binary: [
@@ -128,16 +131,30 @@ const setState = (option, suspense = false) => {
 
 const updateModeUI = () => {
   const isAI = currentMode === "binaryAI";
+  const isList = isCustomListMode();
+
   questionBlock.toggleAttribute("hidden", !isAI);
+  listAiRow.toggleAttribute("hidden", !isList);
+  if (!isList) {
+    listAiToggle.checked = false;
+  }
+
   button.disabled = false;
   button.textContent = "Decidir";
-  if (!isAI) {
+
+  const shouldResetWeights = !isAI && !(isList && listAiToggle.checked);
+  if (shouldResetWeights) {
     questionInput.value = "";
-    weightsStatusEl.textContent = "";
-    lastReason = "";
-    updateDecisionMeta(undefined, undefined, "");
-  } else {
+    resetWeightsState();
+  }
+
+  if (isAI || (isList && listAiToggle.checked)) {
     decisionEl.textContent = "Listo";
+    if (isList && listAiToggle.checked) {
+      weightsStatusEl.hidden = false;
+      weightsStatusEl.textContent = "IA activada: usaremos el nombre y las opciones de la lista.";
+      renderDecisionMeta(null, "");
+    }
   }
 };
 
@@ -166,17 +183,11 @@ const recordDecision = (option, question = null) => {
   renderHistory();
 };
 
-async function fetchYesNoWeights(question) {
+const fetchWeights = async (question, choices) => {
   const response = await fetch(`${API_BASE}/api/weights`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      question,
-      choices: [
-        { id: "YES", label: "Sí" },
-        { id: "NO", label: "No" },
-      ],
-    }),
+    body: JSON.stringify({ question, choices }),
   });
 
   const data = await response.json().catch(() => null);
@@ -191,26 +202,48 @@ async function fetchYesNoWeights(question) {
   }
 
   return { scores: data.scores, reason: data.reason };
-}
+};
 
-const updateDecisionMeta = (yesScore, noScore, reasonText = "") => {
-  if (yesScore === undefined || noScore === undefined) {
+const renderDecisionMeta = (scores, reasonText = "") => {
+  if (!scores || !Array.isArray(scores) || scores.length === 0) {
     decisionMetaEl.textContent = "—";
     decisionMetaEl.hidden = true;
     return;
   }
+
+  const hasYesNo = scores.some((s) => s.id === "YES") && scores.some((s) => s.id === "NO");
   const reasonPart = reasonText ? ` · 🧧 ${reasonText}` : "";
-  decisionMetaEl.innerHTML = `<strong>⚖️ Sí ${yesScore} · No ${noScore}</strong>${reasonPart}`;
+
+  if (hasYesNo && scores.length === 2) {
+    const yes = scores.find((s) => s.id === "YES")?.score ?? "-";
+    const no = scores.find((s) => s.id === "NO")?.score ?? "-";
+    decisionMetaEl.innerHTML = `<strong>⚖️ Sí ${yes} · No ${no}</strong>${reasonPart}`;
+    decisionMetaEl.hidden = false;
+    return;
+  }
+
+  const sorted = [...scores].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const summary = sorted.map((entry) => `${entry.label || entry.id} ${entry.score ?? "-"}`).join(" · ");
+
+  decisionMetaEl.innerHTML = `<strong>⚖️ ${summary}</strong>${reasonPart}`;
   decisionMetaEl.hidden = false;
+};
+
+const resetWeightsState = () => {
+  lastScores = null;
+  lastScoresFromAI = false;
+  lastReason = "";
+  weightsStatusEl.textContent = "";
+  weightsStatusEl.hidden = true;
+  renderDecisionMeta(null, "");
 };
 
 const setWeightsState = (scores, statusText, fromAI, reasonText = "") => {
   lastScores = scores;
   lastScoresFromAI = fromAI;
   lastReason = reasonText;
-  const yes = scores.find((s) => s.id === "YES")?.score ?? "-";
-  const no = scores.find((s) => s.id === "NO")?.score ?? "-";
-  updateDecisionMeta(yes, no, reasonText);
+  weightsStatusEl.hidden = false;
+  renderDecisionMeta(scores, reasonText);
   weightsStatusEl.textContent = statusText;
 };
 
@@ -248,7 +281,7 @@ const decideWithAI = async () => {
   decisionEl.classList.add("suspense");
   weightsStatusEl.hidden = false;
   weightsStatusEl.textContent = "Consultando IA...";
-  updateDecisionMeta(undefined, undefined, "");
+  renderDecisionMeta(null, "");
 
   let spinIndex = 0;
   const spinOptions = modes.binary;
@@ -259,10 +292,20 @@ const decideWithAI = async () => {
   }, 140);
 
   try {
-    const { scores, reason } = await fetchYesNoWeights(question);
-    setWeightsState(scores, "Pesos devueltos por IA.", true, reason);
+    const choices = [
+      { id: "YES", label: "Sí" },
+      { id: "NO", label: "No" },
+    ];
+    const { scores, reason } = await fetchWeights(question, choices);
 
-    const choiceId = pickWithWeights(scores);
+    const scoresWithLabels = scores.map((entry) => ({
+      ...entry,
+      label: entry.label || choices.find((c) => c.id === entry.id)?.label || entry.id,
+    }));
+
+    setWeightsState(scoresWithLabels, "Pesos devueltos por IA.", true, reason);
+
+    const choiceId = pickWithWeights(scoresWithLabels);
     if (!choiceId) {
       weightsStatusEl.textContent = "No hay pesos válidos.";
       return;
@@ -273,9 +316,67 @@ const decideWithAI = async () => {
     recordDecision(finalOption, question);
     weightsStatusEl.hidden = true;
   } catch (error) {
-    lastScores = null;
-    lastScoresFromAI = false;
-    updateDecisionMeta(undefined, undefined, "");
+    resetWeightsState();
+    const code = error?.message || "MODEL_ERROR";
+    weightsStatusEl.hidden = false;
+    weightsStatusEl.textContent = describeWeightsError(code);
+    decisionEl.textContent = "Error";
+  } finally {
+    clearInterval(spinInterval);
+    button.disabled = false;
+    button.textContent = "Decidir";
+    decisionEl.classList.remove("suspense");
+  }
+};
+
+const decideListWithAI = async () => {
+  const list = getListById(currentMode);
+  if (!list || !list.items?.length) {
+    weightsStatusEl.hidden = false;
+    weightsStatusEl.textContent = "Esta lista no tiene opciones.";
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Consultando IA...";
+  decisionEl.textContent = "Pensando...";
+  decisionEl.classList.add("suspense");
+  weightsStatusEl.hidden = false;
+  weightsStatusEl.textContent = `Consultando IA para "${list.name}"...`;
+  renderDecisionMeta(null, "");
+
+  const spinOptions = modes[currentMode] || buildListOptions(list);
+  let spinIndex = 0;
+  const spinInterval = setInterval(() => {
+    const option = spinOptions[spinIndex % spinOptions.length];
+    setState(option, true);
+    spinIndex += 1;
+  }, 140);
+
+  try {
+    const choices = list.items.map((item, idx) => ({ id: `ITEM_${idx}`, label: item }));
+    const { scores, reason } = await fetchWeights(list.name, choices);
+
+    const scoresWithLabels = scores.map((entry) => ({
+      ...entry,
+      label: entry.label || choices.find((c) => c.id === entry.id)?.label || entry.id,
+    }));
+
+    setWeightsState(scoresWithLabels, `Pesos devueltos por IA para "${list.name}".`, true, reason);
+
+    const choiceId = pickWithWeights(scoresWithLabels);
+    if (!choiceId) {
+      weightsStatusEl.textContent = "No hay pesos válidos.";
+      return;
+    }
+
+    const winning = choices.find((c) => c.id === choiceId) || { label: choiceId };
+    const finalOption = { label: winning.label, bodyClass: "custom" };
+    setState(finalOption, false);
+    recordDecision(finalOption, list.name);
+    weightsStatusEl.hidden = true;
+  } catch (error) {
+    resetWeightsState();
     const code = error?.message || "MODEL_ERROR";
     weightsStatusEl.hidden = false;
     weightsStatusEl.textContent = describeWeightsError(code);
@@ -291,6 +392,10 @@ const decideWithAI = async () => {
 const startSpin = () => {
   if (currentMode === "binaryAI") {
     decideWithAI();
+    return;
+  }
+  if (isCustomListMode() && listAiToggle.checked) {
+    decideListWithAI();
     return;
   }
   if (spinning) return;
@@ -329,6 +434,7 @@ const setMode = (mode) => {
   currentMode = mode;
   markRadios(mode);
   setState({ label: "Listo", bodyClass: "" });
+  listAiToggle.checked = false;
   updateModeChip();
   renderLists();
   updateModeUI();
@@ -426,6 +532,8 @@ const selectCustomList = (list) => {
   currentMode = list.id;
   markRadios(null);
   setState({ label: "Listo", bodyClass: "" });
+  listAiToggle.checked = false;
+  resetWeightsState();
   updateModeChip();
   modeMenu.setAttribute("hidden", "");
   menuButton.setAttribute("aria-expanded", "false");
@@ -542,10 +650,24 @@ modeInputs.forEach((input) => {
       if (currentMode === "binaryAI") {
         decisionEl.textContent = "Listo";
         weightsStatusEl.textContent = "Escribe una pregunta y pulsa “Decidir” en este modo.";
-        updateDecisionMeta(undefined, undefined, "");
+        renderDecisionMeta(null, "");
       }
     }
   });
+});
+
+listAiToggle.addEventListener("change", () => {
+  if (!isCustomListMode()) {
+    resetWeightsState();
+    return;
+  }
+  if (listAiToggle.checked) {
+    weightsStatusEl.hidden = false;
+    weightsStatusEl.textContent = "IA activada: usaremos el nombre y las opciones de la lista.";
+    renderDecisionMeta(null, "");
+  } else {
+    resetWeightsState();
+  }
 });
 
 createListBtn.addEventListener("click", () => {

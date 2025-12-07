@@ -41,8 +41,8 @@ const validatePayload = (payload) => {
     return { ok: false, error: "question must be a non-empty string up to 1000 characters" };
   }
 
-  if (!Array.isArray(choices) || choices.length !== 2) {
-    return { ok: false, error: "choices must contain exactly 2 items" };
+  if (!Array.isArray(choices) || choices.length < 2 || choices.length > 12) {
+    return { ok: false, error: "choices must contain between 2 and 12 items" };
   }
 
   const parsedChoices = choices.map((choice, idx) => {
@@ -62,21 +62,16 @@ const validatePayload = (payload) => {
     return { ok: false, error: "choices ids must be unique" };
   }
 
-  const requiredIds = new Set(["YES", "NO"]);
-  if (uniqueIds.size !== requiredIds.size || ids.some((id) => !requiredIds.has(id))) {
-    return { ok: false, error: "choices ids must be YES and NO" };
-  }
-
   return { ok: true, value: { question: question.trim(), choices: parsedChoices } };
 };
 
 const buildMessages = (question, choices) => {
   const choiceLines = choices.map((c) => `- ${c.id}: ${c.label}`).join("\n");
   const system =
-    "Responde SOLO con JSON plano sin Markdown. Formato exacto: {\"scores\":[{\"id\":\"YES\",\"score\":<entero 0-100>},{\"id\":\"NO\",\"score\":<entero 0-100>}],\"reason\":\"<frase corta estilo galleta de la suerte>\"}. " +
-    "Usa los ids tal cual. Scores enteros 0-100. La razón debe ser una sola frase corta, positiva y concisa, sin saltos de línea. El formato de esa frase es similar a una galleta de la suerte.";
+    "Responde SOLO con JSON plano sin Markdown. Formato exacto: {\"scores\":[{\"id\":\"<id>\",\"score\":<entero 0-100>}...],\"reason\":\"<frase corta estilo galleta de la suerte>\"}. " +
+    "Incluye una entrada en scores para CADA opción listada, usando exactamente su id. Scores enteros 0-100. La razón debe ser una sola frase corta, positiva y concisa, sin saltos de línea. El formato de esa frase es similar a una galleta de la suerte.";
 
-  const user = `Pregunta: ${question}\nOpciones:\n${choiceLines}\nDevuelve el JSON con scores y reason.`;
+  const user = `Pregunta: ${question}\nOpciones:\n${choiceLines}\nDevuelve el JSON con scores para TODAS las opciones y reason.`;
 
   return [
     { role: "system", content: system },
