@@ -30,6 +30,8 @@
           <p style="font-size: 0.85rem; color: var(--muted); margin: 0.4rem 0;">Sin listas personalizadas</p>
         </div>
         <button id="createListBtn" class="menu-button-small">+ Nueva Lista</button>
+        <hr style="margin: 0.8rem 0 0.4rem; border: none; border-top: 1px solid rgba(255, 255, 255, 0.1);" />
+        <button id="openHistoryBtn" class="menu-button-small">Historial</button>
       </div>
     </header>
 
@@ -61,6 +63,22 @@
             <button type="button" class="btn-danger" id="deleteBtn" hidden>Eliminar Lista</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal Historial -->
+    <div id="historyModal" class="modal" hidden>
+      <div class="modal-content">
+        <div class="modal-header history-header">
+          <h2>Historial de decisiones</h2>
+          <div class="modal-header-actions">
+            <button class="btn-ghost" id="clearHistoryBtn" type="button">Borrar historial</button>
+            <button class="modal-close" id="closeHistoryModal">✕</button>
+          </div>
+        </div>
+        <div id="historyList" class="history-list">
+          <p class="empty-state">Aún no hay decisiones registradas</p>
+        </div>
       </div>
     </div>
 

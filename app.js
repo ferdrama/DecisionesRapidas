@@ -16,6 +16,11 @@ const deleteBtn = document.getElementById("deleteBtn");
 const createListBtn = document.getElementById("createListBtn");
 const listsList = document.getElementById("listsList");
 const modalTitle = document.getElementById("modalTitle");
+const historyModal = document.getElementById("historyModal");
+const historyListEl = document.getElementById("historyList");
+const openHistoryBtn = document.getElementById("openHistoryBtn");
+const closeHistoryModal = document.getElementById("closeHistoryModal");
+const clearHistoryBtn = document.getElementById("clearHistoryBtn");
 
 const modes = {
   binary: [
@@ -60,19 +65,38 @@ const StorageManager = {
   },
 };
 
+const HistoryManager = {
+  getHistory() {
+    const data = localStorage.getItem("decisionHistory");
+    return data ? JSON.parse(data) : [];
+  },
+  addEntry(entry) {
+    const history = this.getHistory();
+    history.unshift(entry);
+    localStorage.setItem("decisionHistory", JSON.stringify(history));
+  },
+  deleteEntry(id) {
+    const history = this.getHistory().filter((item) => item.id !== id);
+    localStorage.setItem("decisionHistory", JSON.stringify(history));
+  },
+  clear() {
+    localStorage.removeItem("decisionHistory");
+  },
+};
+
 const buildListOptions = (list) => list.items.map((item) => ({ label: item, bodyClass: "custom" }));
 
 const getListById = (id) => StorageManager.getLists().find((l) => l.id === id);
 
+const getModeLabel = () => {
+  if (currentMode === "dice") return "Dado de seis caras";
+  if (currentMode === "binary") return "Sí / No";
+  const list = getListById(currentMode);
+  return list ? list.name : "Lista personalizada";
+};
+
 const updateModeChip = () => {
-  let label = "Modo: Sí / No";
-  if (currentMode === "dice") {
-    label = "Modo: Dado de seis caras";
-  } else if (currentMode !== "binary") {
-    const list = getListById(currentMode);
-    label = list ? `Modo: ${list.name}` : "Modo: Lista personalizada";
-  }
-  modeChip.textContent = label;
+  modeChip.textContent = `Modo: ${getModeLabel()}`;
 };
 
 const setState = (option, suspense = false) => {
@@ -87,7 +111,29 @@ const setState = (option, suspense = false) => {
   }
 };
 
+const formatDateTime = (isoString) => {
+  const date = new Date(isoString);
+  return date.toLocaleString("es-ES", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 const chooseFinalOption = (options) => options[Math.floor(Math.random() * options.length)];
+
+const recordDecision = (option) => {
+  const entry = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    type: getModeLabel(),
+    result: option.label,
+    timestamp: new Date().toISOString(),
+  };
+  HistoryManager.addEntry(entry);
+  renderHistory();
+};
 
 const startSpin = () => {
   if (spinning) return;
@@ -113,6 +159,7 @@ const startSpin = () => {
     clearInterval(intervalId);
     const final = chooseFinalOption(options);
     setState(final, false);
+    recordDecision(final);
     button.disabled = false;
     button.textContent = "Decidir";
     spinning = false;
@@ -272,6 +319,45 @@ const renderLists = () => {
   });
 };
 
+const renderHistory = () => {
+  const history = HistoryManager.getHistory();
+
+  if (history.length === 0) {
+    historyListEl.innerHTML = '<p class="empty-state">Aún no hay decisiones registradas</p>';
+    return;
+  }
+
+  historyListEl.innerHTML = history
+    .map(
+      (item) => `
+        <div class="history-item" data-id="${item.id}">
+          <div>
+            <div class="history-main">
+              <span class="history-tag">${item.type}</span>
+              <span>${item.result}</span>
+            </div>
+            <div class="history-meta">${formatDateTime(item.timestamp)}</div>
+          </div>
+          <div class="history-actions">
+            <button class="history-delete" data-id="${item.id}">Borrar</button>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+};
+
+const openHistory = () => {
+  renderHistory();
+  historyModal.removeAttribute("hidden");
+  modeMenu.setAttribute("hidden", "");
+  menuButton.setAttribute("aria-expanded", "false");
+};
+
+const closeHistory = () => {
+  historyModal.setAttribute("hidden", "");
+};
+
 // Event listeners
 menuButton.addEventListener("click", (event) => {
   event.stopPropagation();
@@ -312,10 +398,37 @@ listModal.addEventListener("click", (e) => {
   }
 });
 
+openHistoryBtn.addEventListener("click", () => {
+  openHistory();
+});
+
+closeHistoryModal.addEventListener("click", closeHistory);
+
+historyModal.addEventListener("click", (e) => {
+  if (e.target === historyModal) {
+    closeHistory();
+  }
+});
+
+clearHistoryBtn.addEventListener("click", () => {
+  if (!HistoryManager.getHistory().length) return;
+  if (!confirm("¿Borrar todo el historial?")) return;
+  HistoryManager.clear();
+  renderHistory();
+});
+
+historyListEl.addEventListener("click", (e) => {
+  const deleteBtnEl = e.target.closest(".history-delete");
+  if (!deleteBtnEl) return;
+  HistoryManager.deleteEntry(deleteBtnEl.dataset.id);
+  renderHistory();
+});
+
 button.addEventListener("click", startSpin);
 setState({ label: "Listo", bodyClass: "" });
 updateModeChip();
 renderLists();
+renderHistory();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
