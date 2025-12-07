@@ -1,8 +1,8 @@
 {
   "name": "Decisiones Rápidas",
   "short_name": "Decidir",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0b1720",
@@ -10,19 +10,19 @@
   "description": "Aplicación para tomar decisiones rápidas: Sí/No o Dado de seis caras",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "icons/icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "icons/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon.svg",
+      "src": "icons/icon.svg",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "any"
