@@ -121,7 +121,7 @@
         window.DR_API_BASE = window.DR_API_BASE || (isLocal ? DEV_BASE : PROD_BASE);
       })();
     </script>
-    <script src="app.js"></script>
+    <script type="module" src="src/app.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
         let refreshing = false;
