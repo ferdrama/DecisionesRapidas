@@ -51,3 +51,17 @@ OPENROUTER_MODEL=openai/gpt-4o-mini
 - CORS del worker ahora usa allowlist (`ferdrama.github.io`, `localhost:8083`) con preflight y 403 si el origen no está permitido.
 - Endpoints: `POST /api/weights` validado y `GET /health` para diagnóstico.
 - Config `wrangler.toml` con vars y documentación de secrets/vars en README.
+
+## Documentación viva y specs
+- La **fuente única de verdad** de la app actual está en `docs/`.
+- Los cambios se especifican en `specs/` (Speckit) como *deltas* respecto a `docs/`.
+- Template para nuevos specs: `specs/_template.md`.
+- Decisiones arquitectónicas: `docs/adr/`.
+
+### Cómo usar `specs/_template.md`
+
+/speckit.specify "Refactorizar X por Y.
+Usa como plantilla y estructura base `specs/_template.md`.
+No repitas contexto canónico: referencia `docs/*` como fuente única.
+El spec debe quedar en formato delta-first siguiendo esa plantilla."
+
