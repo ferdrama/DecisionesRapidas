@@ -49,3 +49,8 @@ Ejecutar tras cambios relevantes en frontend o Worker.
   - Modos manuales funcionan.
   - IA falla con error controlado.
 
+## 7) PWA / Comprobar actualizaciones
+- Abrir el menú → pulsar “Comprobar actualizaciones”.
+  - Sin cambios recientes: informa “No hay actualizaciones disponibles”.
+  - Tras actualizar el SW (p. ej. cambiando `CACHE_NAME`): ofrece “Actualizar ahora”, recarga una sola vez.
+

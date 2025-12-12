@@ -13,17 +13,18 @@
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Revisar contexto canónico de updates PWA y restricciones en docs/flows.md y docs/invariants.md
-- [ ] T002 Revisar ADR vigente del Service Worker y su estrategia de caché en docs/adr/0005-service-worker-cache.md
-- [ ] T003 Confirmar puntos de integración actuales (menú + SW + toast) en index.html, src/app.js y sw.js
+- [x] T001 Revisar contexto canónico de updates PWA y restricciones en docs/flows.md y docs/invariants.md
+- [x] T002 Revisar ADR vigente del Service Worker y su estrategia de caché en docs/adr/0005-service-worker-cache.md
+- [x] T003 Confirmar puntos de integración actuales (menú + SW + toast) en index.html, src/app.js y sw.js
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T004 [P] Cambiar estrategia de activación del Service Worker (quitar auto-activación y soportar mensaje) en sw.js
-- [ ] T005 [P] Añadir opción “Comprobar actualizaciones” al menú hamburguesa en index.html
-- [ ] T006 Verificar/ajustar que el flujo de recarga “una sola vez” sigue siendo correcto tras controllerchange en index.html
+- [x] T004 [P] Cambiar estrategia de activación del Service Worker (quitar auto-activación y soportar mensaje) en sw.js
+- [x] T005 [P] Añadir opción “Comprobar actualizaciones” al menú hamburguesa en index.html
+- [x] T006 Verificar/ajustar que el flujo de recarga “una sola vez” sigue siendo correcto tras controllerchange en index.html
+- [x] T020 Alinear ASSETS precache con el árbol real (incluir `src/*` y eliminar `./app.js` inexistente) en sw.js
 
 **Checkpoint**: Foundation lista; ya se puede implementar la UX de comprobación.
 
@@ -35,10 +36,10 @@
 
 **Independent Test**: Ejecutar “Caso A: No hay actualización” del quickstart en specs/001-manual-update-check/quickstart.md
 
-- [ ] T007 [US1] Conectar el botón del menú a un handler (click) y cerrar el menú tras la acción en src/app.js
-- [ ] T008 [US1] Implementar función de “comprobación manual” usando `navigator.serviceWorker.getRegistration()` + `registration.update()` en src/app.js
-- [ ] T009 [US1] Mostrar feedback explícito al usuario para el caso “no hay actualización disponible” en src/app.js
-- [ ] T010 [US1] Detectar “hay actualización disponible” cuando exista `registration.waiting` (o tras updatefound→installed) y comunicarlo al usuario en src/app.js
+- [x] T007 [US1] Conectar el botón del menú a un handler (click) y cerrar el menú tras la acción en src/app.js
+- [x] T008 [US1] Implementar función de “comprobación manual” usando `navigator.serviceWorker.getRegistration()` + `registration.update()` en src/app.js
+- [x] T009 [US1] Mostrar feedback explícito al usuario para el caso “no hay actualización disponible” en src/app.js
+- [x] T010 [US1] Detectar “hay actualización disponible” cuando exista `registration.waiting` (o tras updatefound→installed) y comunicarlo al usuario en src/app.js
 
 **Checkpoint**: US1 completa: el usuario puede comprobar y recibir un resultado claro.
 
@@ -50,8 +51,8 @@
 
 **Independent Test**: Ejecutar “Caso B: Hay actualización disponible (simulación)” en specs/001-manual-update-check/quickstart.md
 
-- [ ] T011 [US2] Ofrecer confirmación “Actualizar ahora” cuando haya `registration.waiting` y respetar cancelación en src/app.js
-- [ ] T012 [US2] Si el usuario acepta, enviar `postMessage({type:'SKIP_WAITING'})` al SW en `registration.waiting` en src/app.js
+- [x] T011 [US2] Ofrecer confirmación “Actualizar ahora” cuando haya `registration.waiting` y respetar cancelación en src/app.js
+- [x] T012 [US2] Si el usuario acepta, enviar `postMessage({type:'SKIP_WAITING'})` al SW en `registration.waiting` en src/app.js
 - [ ] T013 [US2] Validar que el update aplica y recarga una sola vez (sin bucles) usando el flujo de toast/controllerchange en index.html
 
 **Checkpoint**: US2 completa: hay update → usuario acepta → app actualizada.
@@ -64,9 +65,9 @@
 
 **Independent Test**: Ejecutar “Caso C: Sin conexión” en specs/001-manual-update-check/quickstart.md
 
-- [ ] T014 [US3] Manejar el caso “no hay soporte de Service Worker” y “no hay registration” con mensaje claro en src/app.js
-- [ ] T015 [US3] Manejar fallo/timeout de `registration.update()` (p. ej., offline) con mensaje controlado en src/app.js
-- [ ] T016 [US3] Evitar clicks repetidos (debounce/lock) durante la comprobación para no duplicar prompts ni estados en src/app.js
+- [x] T014 [US3] Manejar el caso “no hay soporte de Service Worker” y “no hay registration” con mensaje claro en src/app.js
+- [x] T015 [US3] Manejar fallo/timeout de `registration.update()` (p. ej., offline) con mensaje controlado en src/app.js
+- [x] T016 [US3] Evitar clicks repetidos (debounce/lock) durante la comprobación para no duplicar prompts ni estados en src/app.js
 
 **Checkpoint**: US3 completa: el flujo es robusto ante fallos comunes.
 
@@ -74,8 +75,8 @@
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T017 [P] Actualizar documentación de flujo de updates PWA (incluyendo trigger manual) en docs/flows.md
-- [ ] T018 [P] Ampliar checklist de smoke tests con el caso “Comprobar actualizaciones” en docs/smoke-tests.md
+- [x] T017 [P] Actualizar documentación de flujo de updates PWA (incluyendo trigger manual) en docs/flows.md
+- [x] T018 [P] Ampliar checklist de smoke tests con el caso “Comprobar actualizaciones” en docs/smoke-tests.md
 - [ ] T019 Ejecutar validación completa: docs/smoke-tests.md + specs/001-manual-update-check/quickstart.md
 
 ---
