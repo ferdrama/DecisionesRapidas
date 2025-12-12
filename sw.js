@@ -1,9 +1,15 @@
-const CACHE_NAME = "decisiones-v4";
+const CACHE_NAME = "decisiones-v5";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
-  "./app.js",
+  "./src/app.js",
+  "./src/game.js",
+  "./src/ui.js",
+  "./src/api.js",
+  "./src/config.js",
+  "./src/storage.js",
+  "./src/utils.js",
   "./manifest.webmanifest",
   "./icons/icon.svg",
   "./icons/icon-192.png",
@@ -11,9 +17,14 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (event) => {
-  // Pre-cache the core shell and activate immediately when a new version is found.
-  self.skipWaiting();
+  // Pre-cache the core shell. New versions wait until the user explicitly updates.
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+});
+
+self.addEventListener("message", (event) => {
+  if (event?.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("activate", (event) => {
@@ -32,8 +43,23 @@ self.addEventListener("activate", (event) => {
 
 const isNavigationRequest = (request) => request.mode === "navigate" || (request.destination === "document" && request.method === "GET");
 
+const isCacheableRequest = (request) => {
+  try {
+    const url = new URL(request.url);
+    return (url.protocol === "http:" || url.protocol === "https:") && url.origin === self.location.origin;
+  } catch {
+    return false;
+  }
+};
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  // Some requests (e.g., injected extension resources) use unsupported schemes for Cache API.
+  if (!isCacheableRequest(event.request)) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
   if (isNavigationRequest(event.request)) {
     // Network-first for navigation so new HTML is picked up; fall back to cache when offline.

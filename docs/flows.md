@@ -76,7 +76,11 @@ sequenceDiagram
 4. “Borrar historial” elimina todas las entradas.
 
 ## Actualizaciones PWA
-1. Service Worker instala nueva versión y activa.
-2. Envía mensaje `SW_ACTIVATED`.
-3. UI muestra toast y recarga una sola vez.
+1. El navegador detecta una nueva versión del Service Worker y la instala.
+2. La nueva versión queda en estado **waiting** (no se activa automáticamente).
+3. Usuario abre el menú y pulsa “Comprobar actualizaciones”.
+4. Si hay nueva versión disponible, la UI ofrece “Actualizar ahora”.
+5. Si el usuario acepta, el Service Worker activa (skipWaiting) y toma control.
+6. Envía mensaje `SW_ACTIVATED`.
+7. UI muestra toast y recarga una sola vez.
 
