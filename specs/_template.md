@@ -1,102 +1,88 @@
-# [NNN] - [Título breve del cambio]
+# Extensiones de spec para DecisionesRápidas
 
-**Estado**: Draft  
-**Creado**: YYYY-MM-DD  
-**Feature branch**: `NNN-titulo-breve`  
+Este archivo **NO es la plantilla principal**. La plantilla base es la estándar de Speckit.
 
-## Resumen
-[1–2 párrafos describiendo el cambio como delta. Indica si es refactor/feature/fix.]
+Aquí se definen las **secciones adicionales** que todo spec de este repo debe incluir para integrarse con la documentación viva en `docs/`.
 
-## Contexto compartido (fuente única de verdad)
-No repetir aquí lo canónico. Referenciar:
-- Visión general: `docs/system-overview.md`
-- Invariantes: `docs/invariants.md`
-- Modelo de dominio/datos: `docs/domain.md`
-- Persistencia/localStorage: `docs/storage.md`
-- Modos actuales: `docs/modes.md`
-- Flujos: `docs/flows.md`
-- Máquina de estados: `docs/state-machine.md`
-- API Worker: `docs/worker-api.md`
-- Smoke checklist base: `docs/smoke-tests.md`
-- ADRs existentes: `docs/adr/`
+---
 
-## Problema / motivación
-[Qué problema se resuelve y por qué ahora.]
+## Secciones a añadir al spec (después de las secciones estándar de Speckit)
 
-## Objetivos (GOALS)
-- [G1]
-- [G2]
+### Contexto compartido (fuente única de verdad)
 
-## No-objetivos (NON-GOALS)
-- [NG1]
-- [NG2]
+No repetir información canónica. Referenciar según aplique:
 
-## Alcance
-### En alcance (IN SCOPE)
-- [Qué se toca.]
+| Documento | Cuándo referenciar |
+|-----------|--------------------|
+| `docs/system-overview.md` | Siempre (visión general) |
+| `docs/invariants.md` | Siempre (reglas que no se rompen) |
+| `docs/domain.md` | Si toca entidades/datos |
+| `docs/storage.md` | Si toca persistencia |
+| `docs/modes.md` | Si toca modos de decisión |
+| `docs/flows.md` | Si toca flujos de usuario |
+| `docs/state-machine.md` | Si toca estados/transiciones |
+| `docs/worker-api.md` | Si toca API del Worker |
+| `docs/smoke-tests.md` | Para validación base |
+| `docs/adr/` | Para decisiones previas relevantes |
 
-### Fuera de alcance (OUT OF SCOPE)
-- [Qué explícitamente no se toca.]
+### Impacto en el sistema
 
-## Cambios propuestos
-[Descripción concreta del cambio: archivos, componentes, comportamiento.]
+Analizar explícitamente:
 
+```markdown
 ### Impacto en modelo de datos / storage
 - Entidades nuevas/modificadas: [sí/no + detalle]
 - Cambio en `localStorage`: [sí/no + detalle]
 - Migración requerida: [sí/no + plan]
 
 ### Impacto en flujos / estados
-- Flujos afectados: [lista]
-- Estados nuevos/modificados: [lista]
+- Flujos afectados: [lista o "ninguno"]
+- Estados nuevos/modificados: [lista o "ninguno"]
 
 ### Impacto en API Worker
 - Contrato afectado: [sí/no + detalle]
-- ADR requerido: [sí/no + link]
+- ADR requerido: [sí/no]
+```
 
-## Historias de usuario (priorizadas)
-### US-01 (P1): ...
-Como usuario...
-- Criterios / escenarios:
-  1. Given ...
-  2. Given ...
+### Plan de validación
 
-### US-02 (P2): ...
-
-## Requisitos no funcionales / constraints
-- [CN1]
-- [CN2]
-
-## Criterios de aceptación (auditables)
-1. ...
-2. ...
-
+```markdown
 ## Plan de validación
 - Reusar checklist base: `docs/smoke-tests.md`
 - Checks adicionales específicos de este spec:
   1. ...
-  2. ...
+```
 
-## Riesgos y mitigaciones
-- Riesgo: ...
-  - Mitigación: ...
+### Definition of Done (DoD)
 
+```markdown
 ## Definition of Done (DoD)
 - [ ] Implementación completa según alcance.
 - [ ] Pasa el plan de validación.
-- [ ] No rompe invariantes globales.
+- [ ] No rompe invariantes de `docs/invariants.md`.
 - [ ] ADRs añadidos/actualizados si aplica.
-- [ ] Docs vivos actualizados (ver siguiente sección).
+- [ ] Docs vivos actualizados (ver checklist).
+```
 
-## Actualizaciones de documentación viva al cerrar
-Checklist de qué debe quedar actualizado en `docs/`:
-- [ ] `docs/system-overview.md` (si cambia arquitectura/estructura)
-- [ ] `docs/invariants.md` (si se añaden/modifican reglas globales)
-- [ ] `docs/domain.md` (si cambian entidades/relaciones)
-- [ ] `docs/storage.md` (si cambia persistencia)
-- [ ] `docs/modes.md` (si cambia catálogo/comportamiento de modos)
-- [ ] `docs/flows.md` (si cambian flujos)
-- [ ] `docs/state-machine.md` (si cambian estados/transiciones)
-- [ ] `docs/worker-api.md` (si cambia contrato backend)
-- [ ] `docs/smoke-tests.md` (si añade checks base)
+### Actualizaciones de documentación viva al cerrar
+
+```markdown
+## Actualizaciones de docs al cerrar
+Marcar qué debe actualizarse en `docs/` antes de cerrar el spec:
+- [ ] `docs/system-overview.md`
+- [ ] `docs/invariants.md`
+- [ ] `docs/domain.md`
+- [ ] `docs/storage.md`
+- [ ] `docs/modes.md`
+- [ ] `docs/flows.md`
+- [ ] `docs/state-machine.md`
+- [ ] `docs/worker-api.md`
+- [ ] `docs/smoke-tests.md`
+```
+
+---
+
+## Prompt sugerido para Speckit
+
+Ver instrucciones en `README.md`.
 

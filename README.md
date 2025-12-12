@@ -55,13 +55,20 @@ OPENROUTER_MODEL=openai/gpt-4o-mini
 ## Documentación viva y specs
 - La **fuente única de verdad** de la app actual está en `docs/`.
 - Los cambios se especifican en `specs/` (Speckit) como *deltas* respecto a `docs/`.
-- Template para nuevos specs: `specs/_template.md`.
+- Extensiones específicas de este repo: `specs/_template.md`.
 - Decisiones arquitectónicas: `docs/adr/`.
 
-### Cómo usar `specs/_template.md`
+### Cómo crear un spec con Speckit
 
-/speckit.specify "Refactorizar X por Y.
-Usa como plantilla y estructura base `specs/_template.md`.
-No repitas contexto canónico: referencia `docs/*` como fuente única.
-El spec debe quedar en formato delta-first siguiendo esa plantilla."
+Usar la plantilla estándar de Speckit + las extensiones de este repo:
 
+```
+/speckit.specify "[Descripción del cambio].
+
+Instrucciones adicionales:
+1. Usa tu plantilla estándar de spec.
+2. Añade las secciones extra definidas en `specs/_template.md`.
+3. No repitas contexto canónico: referencia `docs/*` como fuente única.
+4. El spec describe un delta, no redescribe el sistema.
+5. Antes de escribir, lee `docs/invariants.md` para no violarlas."
+```
